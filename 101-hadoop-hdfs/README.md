@@ -45,7 +45,7 @@ Goal: create/remove files and directories; navigate directories; change the repl
 ### From shell
 
 ```shell
-# Explore HDFS directories with –ls
+# Explore HDFS directories with -ls
 hdfs dfs -ls /
 # Create a bigdata folder in your HDFS home
 hdfs dfs -mkdir bigdata
@@ -58,7 +58,7 @@ hdfs dfs -setrep -w 5 bigdata/dummy.txt
 # Verify that the number of replicas has actually increased
 hdfs dfs -ls bigdata
 # Delete the test folder and the dummy.txt file on HDFS
-hdfs dfs –rm -skipTrash bigdata/dummy.txt
+hdfs dfs -rm -skipTrash bigdata/dummy.txt
 ```
 
 ### From HDFS's web UI
