@@ -1,18 +1,24 @@
-apply plugin: 'java-library'
-apply plugin: 'scala'
-// apply plugin: 'eclipse'
-apply plugin: 'idea'
-apply plugin: 'com.github.johnrengelman.shadow'
+plugins {
+    id 'java-library'
+    id 'scala'
+    id 'idea'
+    id 'com.github.johnrengelman.shadow' version '6.1.0'
+    id 'checkstyle'
+    id 'com.github.alisiikh.scalastyle' version '3.4.1'
+}
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
-buildscript {
-    repositories { jcenter() }
-    dependencies { classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.1' }
-}
+shadowJar { zip64 = true }
 
-shadowJar{ zip64=true }
+javadoc { failOnError true }
+
+scalastyle {
+    config = file("${projectDir}/config/scalastyle_config.xml")
+    verbose = true
+    failOnWarning = false
+}
 
 // In this section you declare where to find the dependencies of your project
 repositories {

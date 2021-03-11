@@ -29,12 +29,15 @@ Most suitable for production jobs.
 Goal: calculate the average temperature for every month; dataset is ```weather-sample```.
 
 - Via shell
-  - Get the code for file ```example-weather.scala```
+  - Get the code for file ```resources/example-weather.scala```
 - Via submit
   - Spark 2 (cluster only)
     - Compile with ```./gradlew```
     - Copy the JAR to your local folder on the cluster
     - Submit with ```spark2-submit --class ExampleWeather2 BD-301-spark-basics.jar```
+    - Optional parameters:
+      - the name of the dataset (either "weather", "weather-sample", "weather-raw", "weather-raw-sample")
+      - the number of initial partitions of the RDD  
   - Spark 1
     - Comment Spark 2 libraries in ```build.gradle``` and uncomment Spark 1 libraries
     - Comment the code in ```src/main/scala/ExampleWeather2.scala``` and uncomment 
