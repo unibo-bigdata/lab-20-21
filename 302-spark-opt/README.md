@@ -4,7 +4,7 @@ Module 1, Big Data course (81932), University of Bologna.
 
 File ```src/main/scala/Exercise``` contains the code for this assignment. 
 Complete the code and/or answer the provided questions.
-All solution will be released after class under ```src/main/scala/ExerciseComplete```
+All solutions will be released after class under ```src/main/scala/ExerciseComplete```
 
 To run via spark shell:
 - ```spark-shell --num-executors 1``` (on the VM)
