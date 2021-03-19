@@ -119,7 +119,7 @@ object Exercise extends App {
    * Hints & considerations:
    * - Keep only temperature values <999
    * - Join syntax: rdd1.join(rdd2)
-   * - Both RDDs should be structured as key-value RDDs with the same key: usaf + wban
+   *   - Both RDDs should be structured as key-value RDDs with the same key: usaf + wban
    * - Consider partitioning and caching to optimize the join
    *   - Careful: it is not enough for the two RDDs to have the same number of partitions;
    *     they must have the same partitioner!
@@ -222,7 +222,13 @@ object Exercise extends App {
     val rddW = rddWeather.filter(_.temperature<999).keyBy(x => x.usaf + x.wban).cache()
     val rddS = rddStation.keyBy(x => x.usaf + x.wban).cache()
 
-    val rdd6a = rddW.join(rddS).filter(_._2._2.country=="UK").map({case(k,v)=>(v._2.name,v._1.temperature)}).reduceByKey((x,y)=>{if(x<y) y else x}).map({case(k,v)=>(v,k)}).sortByKey(false).collect()
+    val rdd6a = rddW
+      .join(rddS)
+      .filter(_._2._2.country=="UK")
+      .map({case(k,v)=>(v._2.name,v._1.temperature)})
+      .reduceByKey((x,y)=>{if(x<y) y else x})
+      .map({case(k,v)=>(v,k)})
+      .sortByKey(false).collect()
   }
 
 

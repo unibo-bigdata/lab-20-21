@@ -1,78 +1,105 @@
-# 301 Spark basics
+# 302 Spark optimization
 
 Module 1, Big Data course (81932), University of Bologna.
 
-## 301-1 Launching the shell or submitting jobs
+File ```src/main/scala/Exercise``` contains the code for this assignment. 
+Complete the code and/or answer the provided questions.
+All solution will be released after class under ```src/main/scala/ExerciseComplete```
 
-Apache Spark admits two ways of running applications: interactive and batch.
+To run via spark shell:
+- ```spark-shell --num-executors 1``` (on the VM)
+- ```spark2-shell``` (on the cluster)
+- Copy/paste the code in ```src/main/scala/StationData``` and ```src/main/scala/WeatherData``` (use ```:paste``` to enter paste mode; use Ctrl+D to exit it)
+- Copy/paste and complete exercise code (note: there is no need to create the SparkContext)
 
-Interactive applications can be written using the *shell*. 
-No need to use an IDE, just write and execute jobs. 
-Most suitable for exploratory activities and live demos.
+To run via spark submit:
+- Comment/uncomment dependencies and code lines code lines (see function ```getSparkContext()```) depending on your Spark version
+- ```spark-submit --class Exercise BD-302-spark-opt.jar <exerciseNumber>```
+- ```spark2-submit --class Exercise BD-302-spark-opt.jar <exerciseNumber>```
+- Beware: debugging is more burdensome (use ```yarn logs -applicationId <appId>``` where ```<appId>``` is similar to ```application_1583679666662_0134``` to retrieve the Executors' logs)
 
-- Launch with ```spark-shell``` to run Spark 1
-- Launch with ```spark2-shell``` to run Spark 2 (cluster only)
-- Further parameters can be used to force a certain deployment configuration (e.g., the number of executors); to be discussed in 302.
+## 302-1 Job optimization
 
-Batch applications can be submitted by invoking the *spark-submit* program. 
-Write applications using an IDE (e.g., Intellij), compile and submit the jar. 
-Most suitable for production jobs.
+Optimize the two jobs (avg temperature and max temperature) by avoiding the repetition of the same computations and by defining a good number of partitions.
 
-- Submit with ```spark-submit <jarFile>``` to run on Spark 1
-- Submit with ```spark2-submit <jarFile>``` to run on Spark 2
-- Same considerations for further parameters apply here
+Hints:
+- Verify your persisted data in the web UI
+- Use either ```repartition()``` or ```coalesce()``` to define the number of partitions
+  - ```repartition()``` shuffles all the data
+  - ```coalesce()``` minimizes data shuffling by exploiting the existing partitioning
+- Verify the execution plan of your RDDs with ```rdd.toDebugString``` (shell only) or on the web UI
 
-*NOTE*: Spark libraries are heavy; use the fat JAR *only if* you need some library that is not in the cluster/VM.
+## 302-2 RDD preparation
 
-### Example Weather
+Check the five possibilities to transform the Station RDD and identify the best one.
 
-Goal: calculate the average temperature for every month; dataset is ```weather-sample```.
+## 302-3 Joining RDDs
 
-- Via shell
-  - Get the code for file ```resources/example-weather.scala```
-- Via submit
-  - Spark 2 (cluster only)
-    - Compile with ```./gradlew```
-    - Copy the JAR to your local folder on the cluster
-    - Submit with ```spark2-submit --class ExampleWeather2 BD-301-spark-basics.jar```
-    - Optional parameters:
-      - the name of the dataset (either "weather", "weather-sample", "weather-raw", "weather-raw-sample")
-      - the number of initial partitions of the RDD  
-  - Spark 1
-    - Comment Spark 2 libraries in ```build.gradle``` and uncomment Spark 1 libraries
-    - Comment the code in ```src/main/scala/ExampleWeather2.scala``` and uncomment 
-    the code in ```src/main/scala/ExampleWeather1.scala```
-    - Compile with ```./gradlew```
-    - Copy the JAR to your local folder on the cluster/VM
-    - Submit with ```spark-submit --class ExampleWeather1 BD-301-spark-basics.jar```
+Define the join between rddWeather and rddStation and compute:
+- The maximum temperature for every city
+- The maximum temperature for every city in the UK: 
+  - ```StationData.country == "UK"```
+- Sort the results by descending temperature
+  - ```map({case(k,v)=>(v,k)})``` to invert key with value and vice versa
 
-## 301-2 Spark warm-up
+Hints & considerations:
+- Keep only temperature values <999
+- Join syntax: ```rdd1.join(rdd2)```
+  - Both RDDs should be structured as key-value RDDs with the same key: usaf + wban
+- Consider partitioning and caching to optimize the join
+  - Careful: it is not enough for the two RDDs to have the same number of partitions; they must have the same partitioner!
+- Verify the execution plan of the join in the web UI
 
-Launch the Spark shell and load the ```capra``` and ```divinacommedia``` datasets.
+## 302-4 Memory occupation
 
-```
-val rddCapra = sc.textFile("hdfs:/bigdata/dataset/capra/capra.txt")
-val rddDC = sc.textFile("hdfs:/bigdata/dataset/divinacommedia")
-```
+Use Spark's web UI to verify the space occupied by the provided RDDs.
 
-Try the following actions:
-- Show their content (```collect```)
-- Count their rows (```count```)
-- Split phrases into words (```map``` or ```flatMap```; what’s the difference?)
-- Check the results (remember: evaluation is lazy)
+## 302-5 Evaluating different join methods
 
-## 301-3 From MapReduce to Spark
+Consider the following scenario:
+- We have a disposable RDD of Weather data (i.e., it is used only once): ```rddW```
+- And we have an RDD of Station data that is used many times: ```rddS```
+- Both RDDs are cached (```collect() ```is called to enforce caching)
 
-Reproduce on Spark the exercises done on Hadoop MapReduce on the capra and divinacommedia datasets.
+We want to join the two RDDS. Which option is best?
+- Simply join the two RDDs
+- Enforce on ```rddW1``` the same partitioner of ```rddS``` (and then join)
+- Exploit broadcast variables
 
-- Jobs:
-  - Count the number of occurrences of each word
-    - Result: (sopra, 1), (la, 4), …
-  - Count the number of occurrences of words of given lengths
-    - Result: (2, 4), (5, 8)
-  - Count the average length of words given their first letter (hint: check the example in 301-1)
-    - Result: (s, 5), (l, 2), …
-  - Return the inverted index of words
-    - Result: (sopra, (0)), (la, (0, 1)), …
-- How does Spark compare with respect to MapReduce? (performance, ease of use)
-- How is the output sorted? How can you sort by value?
+## 302-6 Optimizing Exercise 3
+
+Start from the result of Exercise 3; is there a more efficient way to compute the same result?
+
+## 302-7 Full job optimization (movielens dataset)
+
+Considering the given job on the movielens dataset (```/bigdata/dataset/movielens```), which defines a more complex workload than those seen before.
+
+IMPORTANT: to run it in the sheel, you need to copy/paste the code within the ```MovieLensParser``` file.
+
+In input, it takes:
+- a CSV file of movies (each row is movie with a movieId, a title, and list of genres)
+- a CSV file of ratings (each row is a rating [0-5] made on a movieId in a certain year)
+- a CSV file of tags (each row is a tag associate to a movieId in a certain year)
+
+The goal of the job:
+- return, for each year, the top N movies based on the average rating
+  - for each movie, the result should list the movie's title and the total number of associated tags
+  - the result must be ordered by year
+
+The procedure:
+- initialize RDDS from CSV files
+- count the number of tags for each movie
+- join movies with the other RDDs to associate the former with the respective ratings and number of tags
+- aggregate the result to compute the average rating for each movie
+- group the result by year
+
+The goal of the exercise:
+- think of the optimizations that can be carried out on this job
+- try implementing them and see how much time/computation you are able to save
+- do NOT modify anything outside of the core part, nor in the MovieLensParser class
+- ensure that Spark recomputes everything by re-initializing every RDD
+
+IMPORTANT: for a fair comparison, run the spark2-shell or the spark2-submit with these parameters
+- ```--num-executors 2```
+- ```--executor-cores 3```
+
