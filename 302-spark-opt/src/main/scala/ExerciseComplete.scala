@@ -17,6 +17,7 @@ object ExerciseComplete extends App {
         case "4" => exercise4(sc)
         case "5" => exercise5(sc)
         case "6" => exercise6(sc)
+        case "7" => exercise7(sc)
       }
     }
   }
@@ -293,5 +294,89 @@ object ExerciseComplete extends App {
       .sortByKey(false)
   }
 
+
+  /**
+   * Consider the following job on the movielens dataset.
+   *
+   * In input, it takes:
+   * - a CSV file of movies (each row is movie with a movieId, a title, and list of genres)
+   * - a CSV file of ratings (each row is a rating [0-5] made on a movieId in a certain year)
+   * - a CSV file of tags (each row is a tag associate to a movieId in a certain year)
+   *
+   * The goal of the job:
+   * - return, for each year, the top N movies based on the average rating
+   *   - for each movie, the result should list the movie's title and the total number of associated tags
+   *   - the result must be ordered by year
+   *
+   * The procedure:
+   * - initialize RDDS from CSV files
+   * - count the number of tags for each movie
+   * - join movies with the other RDDs to associate the former with the respective ratings and number of tags
+   * - aggregate the result to compute the average rating for each movie
+   * - group the result by year
+   *
+   * The goal of the exercise:
+   * - think of the optimizations that can be carried out on this job
+   * - try implementing them and see how much time/computation you are able to save
+   * - do NOT modify anything outside of the core part, nor in the MovieLensParser class
+   * - ensure that Spark recomputes everything by re-initializing every RDD
+   *
+   * IMPORTANT: for a fair comparison, run the spark2-shell or the spark2-submit with these parameters
+   * - --num-executors 2
+   * - --executor-cores 3
+   *
+   * --- SOLUTION ---
+   *
+   * The following optimizations that can be done:
+   * - increase the number of partitions of rddRatings to increase the level of parallelism
+   *   and take full advantage of the computing resources
+   * - anticipate the aggregation of ratings before joining with movies and tags
+   * - broadcast movies and tags due to their small size (?)
+   *
+   * @param sc
+   */
+  def exercise7(sc: SparkContext): Unit = {
+    val inputMoviesPath = "/bigdata/dataset/movielens/movies.csv"
+    val inputRatingsPath = "/bigdata/dataset/movielens/ratings.csv"
+    val inputTagsPath = "/bigdata/dataset/movielens/tags.csv"
+    val outputPath = "movielens-output2"
+    val topN = 10
+
+    /* CORE PART (start) */
+
+    // Initialize RDDs from CSV files
+    val rddMovies = sc.textFile(inputMoviesPath).flatMap(MovieLensParser.parseMovieLine)
+    val rddRatings = sc.textFile(inputRatingsPath,16).flatMap(MovieLensParser.parseRatingLine)
+    val rddTags = sc.textFile(inputTagsPath).flatMap(MovieLensParser.parseTagLine)
+
+    import org.apache.spark.HashPartitioner
+
+    val broadcastMovies = sc.broadcast(rddMovies.map(m => (m._1, m._2)).collectAsMap)
+
+    val broadcastTagsPerMovie = sc.broadcast(rddTags.map(t => (t._1, 1)).reduceByKey(_ + _).collectAsMap)
+
+    // rddRatingsKV ( (movieId, year), rating )
+    val rddRatingsKV = rddRatings
+      //.repartition(16)
+      .map(r => ((r._1, r._2), r._3))
+
+    // rddRatingPerMovie ( (movieId, year), avgRating ) - Calculate average rating by movie
+    val rddRatingPerMovie = rddRatingsKV
+      .aggregateByKey((0.0,0.0))((a,v)=>(a._1+v,a._2+1), (a1,a2)=>(a1._1+a2._1,a1._2+a2._2))
+
+    // rddRatingPerMovieByYear ( year, (title,nTags,avgRating) ) - Join with the two broadcast variables to get title and number of tags
+    val rddRatingPerMovieByYear = rddRatingPerMovie
+      .map({case (k,v) => (k, (broadcastMovies.value.get(k._1), broadcastTagsPerMovie.value.get(k._1), v._1/v._2) )})
+
+    /* CORE PART (end) */
+
+    // rddRatingPerMovie ( year, (title,nTags,avgRating) ) - Group by year and format the final result
+    val result = rddRatingPerMovieByYear
+      .groupByKey
+      .mapValues(_.toList.sortBy(-_._3).take(topN))
+      .coalesce(1)
+      .sortByKey()
+      .saveAsTextFile(outputPath)
+  }
 
 }
