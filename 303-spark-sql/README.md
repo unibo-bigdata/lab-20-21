@@ -69,8 +69,8 @@ dfUserData.write.format("parquet").mode("overwrite").saveAsTable("userdata")
 
 # Use partitioning or bucketing
 dfUserData.write.partitionBy("gender").saveAsTable("userdata_p")
-dfUserData.bucketBy(5,"first_name").saveAsTable("userdata_b")
-dfUserData.bucketBy(10,"first_name").saveAsTable("userdata_b2")
+dfUserData.write.bucketBy(5,"first_name").saveAsTable("userdata_b")
+dfUserData.write.bucketBy(10,"first_name").saveAsTable("userdata_b2")
 ```
 
 Write to Parquet file on HDFS
@@ -112,12 +112,17 @@ q3.show()
 
 ## 303-4 Execution plan evaluation
 
-Verify predicate push-down: in both cases, selection predicates are pushed as close to the source as possible.
+Verify predicate push-down: in both cases (q1 and q4), selection predicates are pushed as close to the source as possible.
 
 ```
-# Spark 1
-val q4 = sqlContext.sql("select w.*, s.* from weather w, station s where w.usaf=s.usaf and w.wban = s.wban and elevation > 100")
-# Spark 2
+val dfWeather = sc.textFile("hdfs:/bigdata/dataset/weather-sample").map(WeatherData.extract).toDF()
+val dfStation = sc.textFile("hdfs:/bigdata/dataset/weather-info/stations.csv").map(StationData.extract).toDF()
+
+dfWeather.createOrReplaceTempView("weather")
+dfStation.createOrReplaceTempView("station")
+val dfJoin = spark.sql("select w.*, s.* from weather w, station s where w.usaf=s.usaf and w.wban = s.wban")
+
+val q1 = dfJoin.filter("elevation > 100").select("country","elevation")
 val q4 = spark.sql("select w.*, s.* from weather w, station s where w.usaf=s.usaf and w.wban = s.wban and elevation > 100")
 
 q1.explain
@@ -127,9 +132,15 @@ q4.explain
 Evaluate broadcasting: check execution times and the DAGs in the Web UI.
 
 ```
+val dfWeather = sc.textFile("hdfs:/bigdata/dataset/weather-sample").map(WeatherData.extract).toDF()
+val dfStation = sc.textFile("hdfs:/bigdata/dataset/weather-info/stations.csv").map(StationData.extract).toDF()
+
+dfWeather.createOrReplaceTempView("weather")
+dfStation.createOrReplaceTempView("station")
+val dfJoin = spark.sql("select w.*, s.* from weather w, station s where w.usaf=s.usaf and w.wban = s.wban")
 val dfJoin2 = dfWeather.join(broadcast(dfStation),dfWeather("usaf")===dfStation("usaf") && dfWeather("wban") === dfStation("wban"))
 # Latest Spark's versions (after 2.1)
-val dfJoin2 = spark.sql("/*+ broadcast(s) */ select w.*, s.* from weather w, station s where w.usaf=s.usaf and w.wban = s.wban")
+# val dfJoin2 = spark.sql("/*+ broadcast(s) */ select w.*, s.* from weather w, station s where w.usaf=s.usaf and w.wban = s.wban")
 
 dfJoin2.explain
 dfJoin.explain
