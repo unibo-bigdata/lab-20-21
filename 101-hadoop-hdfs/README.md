@@ -23,6 +23,10 @@ Goal: setup connections to the classroom's cluster via Putty and WinSCP
 - Create a directory in your home called bigdata
 ```mkdir <foldername>```
 
+### Connection from a Mac/Linux terminal
+
+Please visit this [gist](https://gist.github.com/maldins46/1f5ef925622d04754ac7cd2f38535fda) for detailed instructions.
+
 ## 101-2 HDFS disk usage
 
 Goal: understand basic HDFS commands that provide reports on the disk usage
@@ -45,7 +49,7 @@ Goal: create/remove files and directories; navigate directories; change the repl
 ### From shell
 
 ```shell
-# Explore HDFS directories with -ls
+# Explore HDFS directories with –ls
 hdfs dfs -ls /
 # Create a bigdata folder in your HDFS home
 hdfs dfs -mkdir bigdata
@@ -58,7 +62,7 @@ hdfs dfs -setrep -w 5 bigdata/dummy.txt
 # Verify that the number of replicas has actually increased
 hdfs dfs -ls bigdata
 # Delete the test folder and the dummy.txt file on HDFS
-hdfs dfs -rm -skipTrash bigdata/dummy.txt
+hdfs dfs –rm -skipTrash bigdata/dummy.txt
 ```
 
 ### From HDFS's web UI
