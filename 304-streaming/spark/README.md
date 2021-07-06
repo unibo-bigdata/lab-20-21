@@ -42,6 +42,12 @@ make sure that you put this file in the local directory of your cluster machine
 
 Some exercises require additional parameters; in such cases, proper usage is indicated in the exercises' description.
 
+#### Troubleshooting
+
+If you get a NoSuchMethodError when running the spark2-submit with Kafka, run the following command:
+
+```export SPARK_KAFKA_VERSION=0.10```
+
 ### Streaming application via spark-shell
 
 The Spark shell is not the best tool for the streaming scenario: 
